@@ -17,6 +17,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.2.1")
     implementation("org.slf4j:slf4j-api:1.7.26")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-debug:1.2.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     testImplementation("ch.qos.logback:logback-classic:1.2.3")

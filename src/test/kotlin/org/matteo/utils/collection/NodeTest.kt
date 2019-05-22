@@ -620,7 +620,6 @@ internal class NodeTest {
     }
 
     internal class NodeComparator(data: String?) : Node<String, NodeType>(data, null, TestComparator()) {
-
         private class TestComparator : Comparator<String?> {
             override fun compare(s1: String?, s2: String?): Int {
                 return NullSafeComparator().compare(s2, s1)

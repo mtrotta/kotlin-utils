@@ -12,9 +12,9 @@ For example X yearly elaborations, Y monthly, Z daily etc.
 * `Node` class to represent a tree with a Key and a Value
 * `PriorityHashSet` for choosing objects with same hash based on a priority
 
-#### Dequeuer (WIP with coroutines)
+#### Dequeuer (with coroutines)
 
-`Dequeuer` is an utility for processing many items using a `BlockingQueue` and multi-threading.
+`Dequeuer` is an utility for processing many items in parallel using coroutines.
 It has three implementations:
 * `BasicDequeuer` for basic processing with a fixed number of threads
 * `BalancedDequeuer` for processing with a dynamic number of threads based on a rudimentary balancing algorithm
