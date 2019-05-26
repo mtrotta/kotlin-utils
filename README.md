@@ -17,6 +17,7 @@ For example X yearly elaborations, Y monthly, Z daily etc.
 `Dequeuer` is an utility for processing many items in parallel using coroutines.
 It has three implementations:
 * `BasicDequeuer` for basic processing with a fixed number of workers
+* `BalancedDequeuer` for processing with a dynamic number of workers based on a rudimentary balancing algorithm
 * `ChainedDequeuer` for processing items in a chain of dequeuers
 
 

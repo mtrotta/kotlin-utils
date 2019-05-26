@@ -64,9 +64,13 @@ internal class BasicDequeuerTest {
     @Test
     fun testShutdown() {
         val stringProcessor = StringProcessor("1")
-        val dequeuer = BasicDequeuer(stringProcessor)
+        val dequeuer = BasicDequeuer(stringProcessor, capacity = Channel.UNLIMITED)
+        val num = 1 shl 8
         runBlocking {
-            dequeuer.enqueue("1")
+            for (i in 0 until num) {
+                dequeuer.enqueue(i.toString())
+            }
+            println("Queue full")
             dequeuer.shutdown()
             try {
                 dequeuer.enqueue("1")
@@ -75,8 +79,9 @@ internal class BasicDequeuerTest {
             }
             assertFalse(dequeuer.isTerminated)
             dequeuer.awaitTermination()
-            assertTrue(dequeuer.isTerminated)
         }
+        assertTrue(dequeuer.isTerminated)
+        assertEquals(num, stringProcessor.ctr.get())
     }
 
     @Test
@@ -215,6 +220,34 @@ internal class BasicDequeuerTest {
         assertTrue(dequeuer.isTerminated)
         assertEquals(2, dequeuer.unprocessed.size)
         assertNull(dequeuer.exceptionHandler.exception)
+    }
+
+    class ThreadUnsafeProcessor : Processor<String> {
+        private val collection = HashSet<String>(1)
+        override suspend fun process(item: String) {
+            collection.add(item)
+            for (s in collection) {
+                delay(0)
+            }
+            collection.remove(item)
+        }
+    }
+
+    @Test
+    fun testThreadUnsafe() {
+        val processors = ArrayList<ThreadUnsafeProcessor>()
+        for (i in 0..4) {
+            processors.add(ThreadUnsafeProcessor())
+        }
+        val dequeuer = BasicDequeuer(processors, Channel.Factory.UNLIMITED)
+        val num = (1 shl 20).toLong()
+        runBlocking {
+            for (i in 0 until num) {
+                dequeuer.enqueue(i.toString())
+            }
+            dequeuer.awaitTermination()
+        }
+        assertTrue(dequeuer.isTerminated)
     }
 
     companion object {

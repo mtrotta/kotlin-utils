@@ -64,7 +64,7 @@ class ChainedDequeuer<T>(dequeuers: List<BasicDequeuer<T>>, val exceptionHandler
     @Throws(Exception::class)
     override suspend fun awaitTermination(time: Long, unit: TimeUnit) {
         for (dequeuer in chain) {
-            dequeuer.terminate(time, unit)
+            dequeuer.doTerminate(time, unit)
         }
         val exception = exceptionHandler.exception
         if (exception != null) {
