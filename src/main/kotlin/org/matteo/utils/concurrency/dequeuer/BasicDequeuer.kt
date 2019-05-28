@@ -6,8 +6,6 @@ import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.toList
 import org.matteo.utils.concurrency.exception.ExceptionHandler
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
 
 /**
@@ -19,10 +17,10 @@ open class BasicDequeuer<T> internal constructor(
     workers: List<Worker<T>>,
     active: Int,
     capacity: Int,
-    var exceptionHandler: ExceptionHandler,
+    exceptionHandler: ExceptionHandler,
     dispatcher: CoroutineDispatcher
 ) :
-    Dequeuer<T>,
+    SingleDequeuer<T>(exceptionHandler, null),
     CoroutineScope by CoroutineScope(dispatcher + CoroutineName("Dequeuer")) {
 
     constructor(
@@ -60,8 +58,6 @@ open class BasicDequeuer<T> internal constructor(
 
     private val job: Job
 
-    internal var onCompleteAction: (suspend (T) -> Unit)? = null
-
     private val coroutineExceptionHandler = CoroutineExceptionHandler { _, exception ->
         exceptionHandler.handle(exception)
     }
@@ -77,7 +73,6 @@ open class BasicDequeuer<T> internal constructor(
     @ExperimentalCoroutinesApi
     private fun CoroutineScope.startWorker(channel: ReceiveChannel<T>, worker: Worker<T>) = launch {
         try {
-            log.info("START")
             while (isActive) {
                 if (worker.working) {
                     val item = withTimeoutOrNull(CLOCK) {
@@ -93,7 +88,6 @@ open class BasicDequeuer<T> internal constructor(
                     delay(CLOCK)
                 }
             }
-            log.info("END")
         } catch (ignore: ClosedReceiveChannelException) {
         }
     }
@@ -126,7 +120,7 @@ open class BasicDequeuer<T> internal constructor(
         }
     }
 
-    internal suspend fun doTerminate(time: Long, unit: TimeUnit) {
+    override suspend fun doTerminate(time: Long, unit: TimeUnit) {
         shutdown()
         try {
             if (time > 0) {
@@ -152,7 +146,6 @@ open class BasicDequeuer<T> internal constructor(
     }
 
     companion object {
-        private val log: Logger = LoggerFactory.getLogger(BasicDequeuer::class.java)
         private val CLOCK = TimeUnit.SECONDS.toMillis(1)
     }
 }

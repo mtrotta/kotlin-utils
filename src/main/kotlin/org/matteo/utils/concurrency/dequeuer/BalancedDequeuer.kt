@@ -46,7 +46,8 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         initial,
         capacity,
         exceptionHandler,
-        dispatcher
+        dispatcher,
+        profile
     )
 
     constructor(
@@ -64,7 +65,8 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         initial,
         capacity,
         exceptionHandler,
-        dispatcher
+        dispatcher,
+        profile
     )
 
     private constructor(
@@ -74,9 +76,11 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         initial: Int,
         capacity: Int,
         exceptionHandler: ExceptionHandler,
-        dispatcher: CoroutineDispatcher
-    ) : super(workers, initial, capacity, exceptionHandler, dispatcher) {
+        dispatcher: CoroutineDispatcher,
+        profile: Profile
+    ) : super(workers, max, capacity, exceptionHandler, dispatcher) {
         this.workers = workers
+        this.profile = profile
         startBalance(min, max, initial)
     }
 
@@ -97,8 +101,8 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         @Synchronized get() {
             var status = WorkerStatus.UNAVAILABLE
             var analysisPeriod = profile.period * CLOCK
-            val results = analyse()
-            if (!results.isEmpty()) {
+            val results = workers.filter { it.isObservable.get() }.map { it.processed }
+            if (results.isNotEmpty()) {
                 val num = numWorkers.get()
                 val throughput = getThroughput(results)
                 if (throughput == 0L) {
@@ -163,11 +167,12 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         val high: Double,
         val low: Double,
         val worth: Double,
+        val delta: Int,
         val fluid: Boolean
     ) {
-        FAST(3, 0.9, 0.1, 0.05, true),
-        MEDIUM(5, 0.5, 0.5, 0.1, true),
-        SLOW(10, 0.1, 0.9, 0.2, false)
+        FAST(3, 0.9, 0.1, 0.05, 100, true),
+        MEDIUM(5, 0.5, 0.5, 0.1, 10, true),
+        SLOW(10, 0.1, 0.9, 0.2, 1, false)
     }
 
     private fun startBalance(min: Int, max: Int, initial: Int) {
@@ -186,32 +191,30 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
     private fun increaseWorkers() {
         try {
             val num = numWorkers.get()
-            if (num < maxWorkers) {
-                val worker: BalancedWorker<T> = workers[numWorkers.getAndIncrement()]
-                worker.start()
+            val increasedNumber = Math.min(maxWorkers, num + profile.delta)
+            if (increasedNumber != num) {
+                for (i in num until increasedNumber) {
+                    val worker: BalancedWorker<T> = workers[i]
+                    worker.start()
+                }
+                numWorkers.set(increasedNumber)
             }
         } catch (e: Exception) {
             exceptionHandler.handle(e)
         }
-
     }
 
     @Synchronized
     private fun decreaseWorkers() {
-        if (numWorkers.get() > minWorkers) {
-            val worker: BalancedWorker<T> = workers[numWorkers.decrementAndGet()]
-            worker.stop()
-        }
-    }
-
-    private fun analyse(): Collection<Long> {
-        val results = ArrayList<Long>()
-        for (worker in workers) {
-            if (worker.isObservable.get()) {
-                results.add(worker.processed)
+        val num = numWorkers.get()
+        val decreasedNumber = Math.max(minWorkers, num - profile.delta)
+        if (num != decreasedNumber) {
+            for (i in decreasedNumber until num) {
+                val worker: BalancedWorker<T> = workers[i]
+                worker.stop()
             }
+            numWorkers.set(decreasedNumber)
         }
-        return results
     }
 
     private fun compare(current: Long, lower: Long?, higher: Long?): Int? {
@@ -260,28 +263,30 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         private val LOGGER = LoggerFactory.getLogger(BalancedDequeuer::class.java)
 
         private const val DEFAULT_MIN = 1
-        private val DEFAULT_MAX = Runtime.getRuntime().availableProcessors()
+        private val DEFAULT_MAX = Runtime.getRuntime().availableProcessors() * 100
 
         private val UNIT = TimeUnit.NANOSECONDS
-        val CLOCK = TimeUnit.SECONDS.toNanos(1)
+        val CLOCK = UNIT.convert(1, TimeUnit.SECONDS)
     }
 }
 
-internal class BalancedWorker<T>(processor: Processor<T>, working: Boolean, private val profile: BalancedDequeuer.Profile) :
+internal class BalancedWorker<T>(
+    processor: Processor<T>,
+    working: Boolean,
+    private val profile: BalancedDequeuer.Profile
+) :
     Worker<T>(processor, working) {
 
     private val ctr = AtomicLong()
 
-    internal var averageWorkTime = BalancedDequeuer.CLOCK.toDouble()
+    internal val isObservable = AtomicBoolean(false)
 
-    internal var isObservable = AtomicBoolean(false)
-        private set
+    internal var averageWorkTime = BalancedDequeuer.CLOCK.toDouble()
 
     internal val processed: Long
         get() {
-            val processed = ctr.get()
-            reset()
-            return processed
+            isObservable.set(false)
+            return ctr.getAndSet(0)
         }
 
     override suspend fun process(item: T?) {
@@ -301,11 +306,5 @@ internal class BalancedWorker<T>(processor: Processor<T>, working: Boolean, priv
         ctr.addAndGet(delta)
         isObservable.set(true)
     }
-
-    private fun reset() {
-        ctr.set(0)
-        isObservable.set(false)
-    }
-
 
 }

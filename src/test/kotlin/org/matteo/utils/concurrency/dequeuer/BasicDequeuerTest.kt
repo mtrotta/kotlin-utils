@@ -18,7 +18,7 @@ internal class BasicDequeuerTest {
         val ctr = AtomicInteger()
 
         override suspend fun process(item: String) {
-            delay(1)
+            delay(1000)
             ctr.incrementAndGet()
         }
 
@@ -30,8 +30,8 @@ internal class BasicDequeuerTest {
     @Test
     fun test() {
         val stringProcessor = StringProcessor("1")
-        val dequeuer = BasicDequeuer(stringProcessor)
-        val num = 1 shl 5
+        val num = 1 shl 12
+        val dequeuer = BasicDequeuer(stringProcessor, num)
         runBlocking {
             for (i in 0 until num) {
                 dequeuer.enqueue(i.toString())
@@ -64,7 +64,7 @@ internal class BasicDequeuerTest {
     @Test
     fun testShutdown() {
         val stringProcessor = StringProcessor("1")
-        val dequeuer = BasicDequeuer(stringProcessor, capacity = Channel.UNLIMITED)
+        val dequeuer = BasicDequeuer(stringProcessor, capacity = Channel.UNLIMITED, workers = 100)
         val num = 1 shl 8
         runBlocking {
             for (i in 0 until num) {
@@ -87,7 +87,7 @@ internal class BasicDequeuerTest {
     @Test
     fun testMultiProcessor() {
         val processors = ArrayList<Processor<String>>()
-        for (i in 0 until 10) {
+        for (i in 0 until 100) {
             processors.add(StringProcessor(i.toString()))
         }
         val dequeuer = BasicDequeuer(processors)

@@ -17,7 +17,7 @@ internal class BalancedDequeuerTest {
     class StringProcessor : Processor<String> {
         val ctr = AtomicInteger()
         override suspend fun process(item: String) {
-            delay(1)
+            delay(100)
             ctr.incrementAndGet()
         }
     }
@@ -34,9 +34,9 @@ internal class BalancedDequeuerTest {
         override suspend fun process(item: Collection<String>) {
             for (s in item) {
                 delay(0)
+                ctr.incrementAndGet()
             }
             delay(10)
-            ctr.incrementAndGet()
         }
     }
 
@@ -44,8 +44,8 @@ internal class BalancedDequeuerTest {
     fun testBalanceSingleProcessor() {
         val begin = System.currentTimeMillis()
         val processor = StringProcessor()
-        val dequeuer = BalancedDequeuer(processor, min = 10, max = 20)
-        val num = 500
+        val dequeuer = BalancedDequeuer(processor, min = 1000, max = 5000, profile = BalancedDequeuer.Profile.FAST)
+        val num = 50000
         runBlocking {
             for (i in 0 until num) {
                 dequeuer.enqueue(i.toString())
@@ -62,10 +62,10 @@ internal class BalancedDequeuerTest {
     @Test
     fun testBalance() {
         val processors = ArrayList<StringProcessor>()
-        for (i in 0..19) {
+        for (i in 0 until 2000) {
             processors.add(StringProcessor())
         }
-        val dequeuer = BalancedDequeuer(processors, initial = 20, dispatcher = Dispatchers.IO)
+        val dequeuer = BalancedDequeuer(processors, initial = 100, dispatcher = Dispatchers.IO)
         val num = 1 shl 14
         runBlocking {
             for (i in 0 until num) {
@@ -90,13 +90,13 @@ internal class BalancedDequeuerTest {
     }
 
     @Test
-    fun testBalanceMin() {
+    fun testBalanceUnsafe() {
         val processors = ArrayList<ThreadUnsafeProcessor>()
         for (i in 0..4) {
             processors.add(ThreadUnsafeProcessor())
         }
-        val dequeuer = BalancedDequeuer(processors, Channel.Factory.UNLIMITED)
-        val num = (1 shl 22).toLong()
+        val dequeuer = BalancedDequeuer(processors, Channel.Factory.UNLIMITED, profile = BalancedDequeuer.Profile.SLOW)
+        val num = (1 shl 20).toLong()
         runBlocking {
             for (i in 0 until num) {
                 dequeuer.enqueue(i.toString())
@@ -113,7 +113,7 @@ internal class BalancedDequeuerTest {
     @Test
     fun testBalanceStupid() {
         val processors = ArrayList<StupidProcessor>()
-        for (i in 0..19) {
+        for (i in 0..200) {
             processors.add(StupidProcessor())
         }
         val dequeuer = BalancedDequeuer(processors, Channel.Factory.UNLIMITED)
@@ -126,18 +126,19 @@ internal class BalancedDequeuerTest {
             dequeuer.awaitTermination()
         }
         assertTrue(dequeuer.isTerminated)
+        assertEquals(num, processors.map { it.ctr.get() }.sum())
     }
 
     @Test
     fun testBalanceSmart() {
         val processors = ArrayList<SmartProcessor>()
-        for (i in 0..19) {
+        for (i in 0..400) {
             processors.add(SmartProcessor())
         }
         val dequeuer = BalancedDequeuer(processors)
         val profile = BalancedDequeuer.Profile.FAST
         dequeuer.profile = profile
-        val num = 1 shl 4
+        val num = 1 shl 25
         var list: MutableList<String> = ArrayList()
         runBlocking {
             for (i in 0 until num) {
@@ -147,10 +148,11 @@ internal class BalancedDequeuerTest {
                     list = ArrayList()
                 }
             }
+            dequeuer.enqueue(list)
             dequeuer.awaitTermination()
         }
         assertTrue(dequeuer.isTerminated)
-        assertEquals(profile, dequeuer.profile)
+        assertEquals(num, processors.map { it.ctr.get() }.sum())
     }
 
     @Test
@@ -162,7 +164,7 @@ internal class BalancedDequeuerTest {
             }
         }
         val processors = ArrayList<Processor<String>>()
-        for (i in 0..9) {
+        for (i in 0..90) {
             processors.add(processor)
         }
 
@@ -186,7 +188,7 @@ internal class BalancedDequeuerTest {
             }
         }
         val processors = ArrayList<Processor<String>>()
-        for (i in 0..9) {
+        for (i in 0..90) {
             processors.add(processor)
         }
         val dequeuer = BalancedDequeuer(processors)

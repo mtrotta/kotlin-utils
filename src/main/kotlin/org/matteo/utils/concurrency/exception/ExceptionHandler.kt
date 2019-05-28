@@ -26,12 +26,12 @@ class ExceptionHandler {
             for (listener in listeners) {
                 listener.invoke(exception)
             }
+        } else {
+            log.warn("Received exception but another exception was already caught", exception)
         }
     }
 
-    @Synchronized
     fun register(listener: (exception: Throwable) -> Unit) {
         listeners.add(listener)
     }
-
 }

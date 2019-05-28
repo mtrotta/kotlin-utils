@@ -11,9 +11,9 @@ import java.util.concurrent.TimeUnit
  * Date: 22/05/19
  */
 @ExperimentalCoroutinesApi
-class ChainedDequeuer<T>(dequeuers: List<BasicDequeuer<T>>, val exceptionHandler: ExceptionHandler = ExceptionHandler()) : Dequeuer<T> {
+class ChainedDequeuer<T>(dequeuers: List<SingleDequeuer<T>>, val exceptionHandler: ExceptionHandler = ExceptionHandler()) : Dequeuer<T> {
 
-    private val chain = mutableListOf<BasicDequeuer<T>>()
+    private val chain = mutableListOf<SingleDequeuer<T>>()
 
     override val unprocessed: List<T>
         get() {
@@ -36,7 +36,7 @@ class ChainedDequeuer<T>(dequeuers: List<BasicDequeuer<T>>, val exceptionHandler
             throw IllegalArgumentException("An empty chained dequeuer doesn't make sense")
         }
         val iterator = dequeuers.iterator()
-        var previous: BasicDequeuer<T>? = null
+        var previous: SingleDequeuer<T>? = null
         while (iterator.hasNext()) {
             val next = iterator.next()
             chain.add(next)
