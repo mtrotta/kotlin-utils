@@ -22,10 +22,10 @@ It has two implementations for massive concurrent execution and almost unlimited
 * `CoroutineDequeuer` for basic processing with a fixed number of workers
 * `BalancedCoroutineDequeuer` for processing with a dynamic number of workers based on a rudimentary balancing algorithm
 
-##### With classic threads executors
+##### With classic thread executors
 It has two implementations for massive parallel execution but limited number of threads:
-* `ThreadDequeuer` for basic processing with a fixed number of workers
-* `BalancedThreadDequeuer` for processing with a dynamic number of workers based on a rudimentary balancing algorithm
+* `ThreadDequeuer` for basic processing with a fixed number of thread
+* `BalancedThreadDequeuer` for processing with a dynamic number of threads based on a rudimentary balancing algorithm
 
 #### Delta
 
