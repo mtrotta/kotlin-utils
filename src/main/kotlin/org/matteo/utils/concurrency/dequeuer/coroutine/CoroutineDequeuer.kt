@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
  * User: Matteo Trotta
  * Date: 20/05/19
  */
-open class BasicDequeuer<T> internal constructor(
+open class CoroutineDequeuer<T> internal constructor(
     workers: List<Worker<T>>,
     active: Int,
     capacity: Int,
@@ -24,7 +24,7 @@ open class BasicDequeuer<T> internal constructor(
     dispatcher: CoroutineDispatcher
 ) :
     SingleDequeuer<T>(exceptionHandler, null),
-    CoroutineScope by CoroutineScope(dispatcher + CoroutineName("Dequeuer")) {
+    CoroutineScope by CoroutineScope(dispatcher + CoroutineName("CoroutineDequeuer")) {
 
     constructor(
         processor: Processor<T>,

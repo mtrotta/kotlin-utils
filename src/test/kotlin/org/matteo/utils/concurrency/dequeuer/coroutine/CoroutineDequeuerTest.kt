@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 @ExperimentalCoroutinesApi
-internal class BasicDequeuerTest {
+internal class CoroutineDequeuerTest {
 
     class StringProcessor(private val name: String) : Processor<String> {
         val ctr = AtomicInteger()
@@ -33,7 +33,7 @@ internal class BasicDequeuerTest {
     fun test() {
         val stringProcessor = StringProcessor("1")
         val num = 1 shl 12
-        val dequeuer = BasicDequeuer(stringProcessor, num)
+        val dequeuer = CoroutineDequeuer(stringProcessor, num)
         runBlocking {
             for (i in 0 until num) {
                 dequeuer.enqueue(i.toString())
@@ -48,7 +48,7 @@ internal class BasicDequeuerTest {
     fun testTimeout() {
         val stringProcessor = StringProcessor("1")
         val dequeuer =
-            BasicDequeuer(stringProcessor, capacity = Channel.UNLIMITED)
+            CoroutineDequeuer(stringProcessor, capacity = Channel.UNLIMITED)
         val num = 1 shl 12
         runBlocking {
             for (i in 0 until num) {
@@ -67,7 +67,7 @@ internal class BasicDequeuerTest {
     @Test
     fun testShutdown() {
         val stringProcessor = StringProcessor("1")
-        val dequeuer = BasicDequeuer(
+        val dequeuer = CoroutineDequeuer(
             stringProcessor,
             capacity = Channel.UNLIMITED,
             workers = 100
@@ -97,7 +97,7 @@ internal class BasicDequeuerTest {
         for (i in 0 until 100) {
             processors.add(StringProcessor(i.toString()))
         }
-        val dequeuer = BasicDequeuer(processors)
+        val dequeuer = CoroutineDequeuer(processors)
         val num = 1 shl 10
         runBlocking {
             for (i in 0 until num) {
@@ -118,7 +118,7 @@ internal class BasicDequeuerTest {
                 throw SIMULATED_EXCEPTION
             }
         }
-        val dequeuer = BasicDequeuer(processor)
+        val dequeuer = CoroutineDequeuer(processor)
         val num = 5
         runBlocking {
             try {
@@ -151,7 +151,7 @@ internal class BasicDequeuerTest {
                 throw SIMULATED_EXCEPTION
             }
         }
-        val dequeuer = BasicDequeuer(processor)
+        val dequeuer = CoroutineDequeuer(processor)
         dequeuer.exceptionHandler.register { sentinel = true }
         runBlocking {
             dequeuer.enqueue("A")
@@ -180,7 +180,7 @@ internal class BasicDequeuerTest {
                 delay(1000)
             }
         }
-        val dequeuer = BasicDequeuer(processor, capacity = 20)
+        val dequeuer = CoroutineDequeuer(processor, capacity = 20)
         dequeuer.exceptionHandler.register { sentinel = true }
         runBlocking {
             try {
@@ -212,7 +212,7 @@ internal class BasicDequeuerTest {
                 delay(10000)
             }
         }
-        val dequeuer = BasicDequeuer(processor, capacity = 10)
+        val dequeuer = CoroutineDequeuer(processor, capacity = 10)
         runBlocking {
             try {
                 dequeuer.enqueue("A")
@@ -247,7 +247,7 @@ internal class BasicDequeuerTest {
             processors.add(ThreadUnsafeProcessor())
         }
         val dequeuer =
-            BasicDequeuer(processors, Channel.UNLIMITED)
+            CoroutineDequeuer(processors, Channel.UNLIMITED)
         val num = (1 shl 20).toLong()
         runBlocking {
             for (i in 0 until num) {

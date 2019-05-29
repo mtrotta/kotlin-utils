@@ -5,7 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import org.matteo.utils.concurrency.dequeuer.coroutine.BasicDequeuer
+import org.matteo.utils.concurrency.dequeuer.coroutine.CoroutineDequeuer
 import org.matteo.utils.concurrency.exception.ExceptionHandler
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -21,7 +21,7 @@ internal class ChainedDequeuerTest {
     fun testSingle() {
         val processor = FakeProcessor(0)
         val exceptionHandler = ExceptionHandler()
-        val dequeuer = ChainedDequeuer(listOf(BasicDequeuer(processor)), exceptionHandler)
+        val dequeuer = ChainedDequeuer(listOf(CoroutineDequeuer(processor)), exceptionHandler)
         runBlocking {
             dequeuer.enqueue("1")
             dequeuer.awaitTermination()
@@ -39,8 +39,8 @@ internal class ChainedDequeuerTest {
 
         val exceptionHandler = ExceptionHandler()
 
-        val dequeuer1 = BasicDequeuer(processor1, threads)
-        val dequeuer2 = BasicDequeuer(processor2, threads)
+        val dequeuer1 = CoroutineDequeuer(processor1, threads)
+        val dequeuer2 = CoroutineDequeuer(processor2, threads)
 
         val chainedDequeuer = ChainedDequeuer(listOf(dequeuer1, dequeuer2), exceptionHandler)
 
@@ -75,10 +75,10 @@ internal class ChainedDequeuerTest {
     fun testChainedQueueBadProcessor() {
         var sentinel = false
         val processorSuccess = ConditionalBadProcessor(false)
-        val dequeuer1 = BasicDequeuer(processorSuccess)
+        val dequeuer1 = CoroutineDequeuer(processorSuccess)
 
         val processorFail = ConditionalBadProcessor(true)
-        val dequeuer2 = BasicDequeuer(processorFail)
+        val dequeuer2 = CoroutineDequeuer(processorFail)
 
         val chainedDequeuer = ChainedDequeuer(listOf(dequeuer1, dequeuer2))
 

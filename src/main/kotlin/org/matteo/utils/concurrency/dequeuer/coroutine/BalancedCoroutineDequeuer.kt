@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong
  * User: Matteo Trotta
  * Date: 23/05/19
  */
-class BalancedDequeuer<T> : BasicDequeuer<T> {
+class BalancedCoroutineDequeuer<T> : CoroutineDequeuer<T> {
 
     private val workers: List<BalancedWorker<T>>
 
@@ -42,11 +42,7 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         profile: Profile = Profile.MEDIUM
     ) : this(
         0.rangeTo(max).map {
-            BalancedWorker(
-                processor,
-                it < initial,
-                profile
-            )
+            BalancedWorker(processor, it < initial, profile)
         },
         min,
         max,
@@ -67,11 +63,7 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         profile: Profile = Profile.MEDIUM
     ) : this(
         processors.mapIndexed { index, processor ->
-            BalancedWorker(
-                processor,
-                index < initial,
-                profile
-            )
+            BalancedWorker(processor, index < initial, profile)
         },
         min,
         processors.size,
@@ -158,7 +150,8 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
                     )
                 }
             }
-            scheduledExecutorService.schedule(analyser, analysisPeriod,
+            scheduledExecutorService.schedule(
+                analyser, analysisPeriod,
                 UNIT
             )
             return status
@@ -199,7 +192,8 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         setMin(min)
         setMax(max)
         numWorkers = AtomicInteger(initial)
-        scheduledExecutorService.schedule(analyser, profile.period * CLOCK,
+        scheduledExecutorService.schedule(
+            analyser, profile.period * CLOCK,
             UNIT
         )
     }
@@ -277,7 +271,7 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
     }
 
     companion object {
-        private val LOGGER = LoggerFactory.getLogger(BalancedDequeuer::class.java)
+        private val LOGGER = LoggerFactory.getLogger(BalancedCoroutineDequeuer::class.java)
 
         private const val DEFAULT_MIN = 1
         private val DEFAULT_MAX = Runtime.getRuntime().availableProcessors() * 100
@@ -290,7 +284,7 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
 internal class BalancedWorker<T>(
     processor: Processor<T>,
     working: Boolean,
-    private val profile: BalancedDequeuer.Profile
+    private val profile: BalancedCoroutineDequeuer.Profile
 ) :
     Worker<T>(processor, working) {
 
@@ -298,7 +292,7 @@ internal class BalancedWorker<T>(
 
     internal val isObservable = AtomicBoolean(false)
 
-    internal var averageWorkTime = BalancedDequeuer.CLOCK.toDouble()
+    internal var averageWorkTime = BalancedCoroutineDequeuer.CLOCK.toDouble()
 
     internal val processed: Long
         get() {

@@ -14,7 +14,7 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 
 @ExperimentalCoroutinesApi
-internal class BalancedDequeuerTest {
+internal class BalancedCoroutineDequeuerTest {
 
     class StringProcessor : Processor<String> {
         val ctr = AtomicInteger()
@@ -46,11 +46,11 @@ internal class BalancedDequeuerTest {
     fun testBalanceSingleProcessor() {
         val begin = System.currentTimeMillis()
         val processor = StringProcessor()
-        val dequeuer = BalancedDequeuer(
+        val dequeuer = BalancedCoroutineDequeuer(
             processor,
             min = 1000,
             max = 5000,
-            profile = BalancedDequeuer.Profile.FAST
+            profile = BalancedCoroutineDequeuer.Profile.FAST
         )
         val num = 50000
         runBlocking {
@@ -72,7 +72,7 @@ internal class BalancedDequeuerTest {
         for (i in 0 until 2000) {
             processors.add(StringProcessor())
         }
-        val dequeuer = BalancedDequeuer(
+        val dequeuer = BalancedCoroutineDequeuer(
             processors,
             initial = 100,
             dispatcher = Dispatchers.IO
@@ -106,10 +106,10 @@ internal class BalancedDequeuerTest {
         for (i in 0..4) {
             processors.add(ThreadUnsafeProcessor())
         }
-        val dequeuer = BalancedDequeuer(
+        val dequeuer = BalancedCoroutineDequeuer(
             processors,
             Channel.UNLIMITED,
-            profile = BalancedDequeuer.Profile.SLOW
+            profile = BalancedCoroutineDequeuer.Profile.SLOW
         )
         val num = (1 shl 20).toLong()
         runBlocking {
@@ -132,8 +132,8 @@ internal class BalancedDequeuerTest {
             processors.add(StupidProcessor())
         }
         val dequeuer =
-            BalancedDequeuer(processors, Channel.UNLIMITED)
-        dequeuer.profile = BalancedDequeuer.Profile.FAST
+            BalancedCoroutineDequeuer(processors, Channel.UNLIMITED)
+        dequeuer.profile = BalancedCoroutineDequeuer.Profile.FAST
         val num = 1 shl 20
         runBlocking {
             for (i in 0 until num) {
@@ -151,8 +151,8 @@ internal class BalancedDequeuerTest {
         for (i in 0..400) {
             processors.add(SmartProcessor())
         }
-        val dequeuer = BalancedDequeuer(processors)
-        val profile = BalancedDequeuer.Profile.FAST
+        val dequeuer = BalancedCoroutineDequeuer(processors)
+        val profile = BalancedCoroutineDequeuer.Profile.FAST
         dequeuer.profile = profile
         val num = 1 shl 25
         var list: MutableList<String> = ArrayList()
@@ -185,8 +185,8 @@ internal class BalancedDequeuerTest {
             processors.add(processor)
         }
 
-        val dequeuer = BalancedDequeuer(processors)
-        dequeuer.profile = BalancedDequeuer.Profile.SLOW
+        val dequeuer = BalancedCoroutineDequeuer(processors)
+        dequeuer.profile = BalancedCoroutineDequeuer.Profile.SLOW
         val num = (1 shl 16).toLong()
         runBlocking {
             for (i in 0 until num) {
@@ -209,7 +209,7 @@ internal class BalancedDequeuerTest {
         for (i in 0..90) {
             processors.add(processor)
         }
-        val dequeuer = BalancedDequeuer(processors)
+        val dequeuer = BalancedCoroutineDequeuer(processors)
         val num = (1 shl 18).toLong()
         runBlocking {
             for (i in 0 until num) {
@@ -230,7 +230,7 @@ internal class BalancedDequeuerTest {
                 throw SIMULATED_EXCEPTION
             }
         }
-        val dequeuer = BalancedDequeuer(processor)
+        val dequeuer = BalancedCoroutineDequeuer(processor)
         val num = 15
         runBlocking {
             try {
