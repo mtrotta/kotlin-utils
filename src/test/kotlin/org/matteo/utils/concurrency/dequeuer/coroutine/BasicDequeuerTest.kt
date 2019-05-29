@@ -1,4 +1,4 @@
-package org.matteo.utils.concurrency.dequeuer
+package org.matteo.utils.concurrency.dequeuer.coroutine
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
@@ -7,6 +7,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.matteo.utils.concurrency.dequeuer.Processor
+import org.matteo.utils.concurrency.dequeuer.RejectedException
 import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -45,7 +47,8 @@ internal class BasicDequeuerTest {
     @Test
     fun testTimeout() {
         val stringProcessor = StringProcessor("1")
-        val dequeuer = BasicDequeuer(stringProcessor, capacity = Channel.UNLIMITED)
+        val dequeuer =
+            BasicDequeuer(stringProcessor, capacity = Channel.UNLIMITED)
         val num = 1 shl 12
         runBlocking {
             for (i in 0 until num) {
@@ -64,7 +67,11 @@ internal class BasicDequeuerTest {
     @Test
     fun testShutdown() {
         val stringProcessor = StringProcessor("1")
-        val dequeuer = BasicDequeuer(stringProcessor, capacity = Channel.UNLIMITED, workers = 100)
+        val dequeuer = BasicDequeuer(
+            stringProcessor,
+            capacity = Channel.UNLIMITED,
+            workers = 100
+        )
         val num = 1 shl 8
         runBlocking {
             for (i in 0 until num) {
@@ -239,7 +246,8 @@ internal class BasicDequeuerTest {
         for (i in 0..4) {
             processors.add(ThreadUnsafeProcessor())
         }
-        val dequeuer = BasicDequeuer(processors, Channel.Factory.UNLIMITED)
+        val dequeuer =
+            BasicDequeuer(processors, Channel.UNLIMITED)
         val num = (1 shl 20).toLong()
         runBlocking {
             for (i in 0 until num) {

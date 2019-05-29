@@ -1,8 +1,9 @@
-package org.matteo.utils.concurrency.dequeuer
+package org.matteo.utils.concurrency.dequeuer.coroutine
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import org.matteo.utils.concurrency.dequeuer.Processor
 import org.matteo.utils.concurrency.exception.ExceptionHandler
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -40,7 +41,13 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         dispatcher: CoroutineDispatcher = Dispatchers.Default,
         profile: Profile = Profile.MEDIUM
     ) : this(
-        0.rangeTo(max).map { BalancedWorker(processor, it < initial, profile) },
+        0.rangeTo(max).map {
+            BalancedWorker(
+                processor,
+                it < initial,
+                profile
+            )
+        },
         min,
         max,
         initial,
@@ -59,7 +66,13 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         dispatcher: CoroutineDispatcher = Dispatchers.Default,
         profile: Profile = Profile.MEDIUM
     ) : this(
-        processors.mapIndexed { index, processor -> BalancedWorker(processor, index < initial, profile) },
+        processors.mapIndexed { index, processor ->
+            BalancedWorker(
+                processor,
+                index < initial,
+                profile
+            )
+        },
         min,
         processors.size,
         initial,
@@ -145,7 +158,9 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
                     )
                 }
             }
-            scheduledExecutorService.schedule(analyser, analysisPeriod, UNIT)
+            scheduledExecutorService.schedule(analyser, analysisPeriod,
+                UNIT
+            )
             return status
         }
 
@@ -184,7 +199,9 @@ class BalancedDequeuer<T> : BasicDequeuer<T> {
         setMin(min)
         setMax(max)
         numWorkers = AtomicInteger(initial)
-        scheduledExecutorService.schedule(analyser, profile.period * CLOCK, UNIT)
+        scheduledExecutorService.schedule(analyser, profile.period * CLOCK,
+            UNIT
+        )
     }
 
     @Synchronized

@@ -5,6 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.matteo.utils.concurrency.dequeuer.coroutine.BasicDequeuer
 import org.matteo.utils.concurrency.exception.ExceptionHandler
 import java.util.concurrent.atomic.AtomicInteger
 

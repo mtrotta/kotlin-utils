@@ -1,10 +1,13 @@
-package org.matteo.utils.concurrency.dequeuer
+package org.matteo.utils.concurrency.dequeuer.coroutine
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.toList
+import org.matteo.utils.concurrency.dequeuer.Processor
+import org.matteo.utils.concurrency.dequeuer.RejectedException
+import org.matteo.utils.concurrency.dequeuer.SingleDequeuer
 import org.matteo.utils.concurrency.exception.ExceptionHandler
 import java.util.concurrent.TimeUnit
 
