@@ -1,6 +1,7 @@
 package org.matteo.utils.concurrency.dequeuer
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import org.matteo.utils.concurrency.exception.ExceptionHandler
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -11,7 +12,10 @@ import java.util.concurrent.TimeUnit
  * Date: 22/05/19
  */
 @ExperimentalCoroutinesApi
-class ChainedDequeuer<T>(dequeuers: List<SingleDequeuer<T>>, val exceptionHandler: ExceptionHandler = ExceptionHandler()) : Dequeuer<T> {
+class ChainedDequeuer<T>(
+    dequeuers: List<SingleDequeuer<T>>,
+    val exceptionHandler: ExceptionHandler = ExceptionHandler()
+) : Dequeuer<T> {
 
     private val chain = mutableListOf<SingleDequeuer<T>>()
 
@@ -49,7 +53,7 @@ class ChainedDequeuer<T>(dequeuers: List<SingleDequeuer<T>>, val exceptionHandle
     }
 
     @Synchronized
-    override suspend fun shutdownNow(cause: Throwable?) {
+    override fun shutdownNow(cause: Throwable?) {
         for (dequeuer in chain) {
             dequeuer.shutdownNow()
         }
@@ -62,9 +66,11 @@ class ChainedDequeuer<T>(dequeuers: List<SingleDequeuer<T>>, val exceptionHandle
     }
 
     @Throws(Exception::class)
-    override suspend fun awaitTermination(time: Long, unit: TimeUnit) {
-        for (dequeuer in chain) {
-            dequeuer.doTerminate(time, unit)
+    override fun awaitTermination(time: Long, unit: TimeUnit) {
+        runBlocking {
+            for (dequeuer in chain) {
+                dequeuer.doTerminate(time, unit)
+            }
         }
         val exception = exceptionHandler.exception
         if (exception != null) {
@@ -73,7 +79,7 @@ class ChainedDequeuer<T>(dequeuers: List<SingleDequeuer<T>>, val exceptionHandle
     }
 
     @Throws(RejectedException::class)
-    override suspend fun enqueue(item: T) {
+    override fun enqueue(item: T) {
         chain.first().enqueue(item)
     }
 

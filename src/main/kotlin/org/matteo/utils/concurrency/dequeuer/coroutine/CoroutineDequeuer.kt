@@ -23,7 +23,7 @@ open class CoroutineDequeuer<T> internal constructor(
     exceptionHandler: ExceptionHandler,
     dispatcher: CoroutineDispatcher
 ) :
-    SingleDequeuer<T>(exceptionHandler, null),
+    SingleDequeuer<T>(exceptionHandler),
     CoroutineScope by CoroutineScope(dispatcher + CoroutineName("CoroutineDequeuer")) {
 
     constructor(
@@ -62,7 +62,7 @@ open class CoroutineDequeuer<T> internal constructor(
     private val job: Job
 
     private val coroutineExceptionHandler = CoroutineExceptionHandler { _, exception ->
-        exceptionHandler.handle(exception)
+        this.exceptionHandler.handle(exception)
     }
 
     init {
@@ -96,13 +96,15 @@ open class CoroutineDequeuer<T> internal constructor(
     }
 
     @ExperimentalCoroutinesApi
-    override suspend fun enqueue(item: T) {
+    override fun enqueue(item: T) {
         if (isTerminated or !isActive or !job.isActive or channel.isClosedForReceive) {
             throw RejectedException("Dequeuer has been terminated")
         }
         try {
-            withContext(job) {
-                channel.send(item)
+            runBlocking {
+                withContext(job) {
+                    channel.send(item)
+                }
             }
         } catch (e: CancellationException) {
             throw RejectedException("Dequeuer has been canceled")
@@ -114,7 +116,7 @@ open class CoroutineDequeuer<T> internal constructor(
     }
 
     @Throws(Exception::class)
-    override suspend fun awaitTermination(time: Long, unit: TimeUnit) {
+    override fun awaitTermination(time: Long, unit: TimeUnit) {
         shutdown()
         doTerminate(time, unit)
         val exception = exceptionHandler.exception
@@ -123,18 +125,20 @@ open class CoroutineDequeuer<T> internal constructor(
         }
     }
 
-    override suspend fun doTerminate(time: Long, unit: TimeUnit) {
+    override fun doTerminate(time: Long, unit: TimeUnit) {
         shutdown()
-        try {
-            if (time > 0) {
-                withTimeout(unit.toMillis(time)) {
+        runBlocking {
+            try {
+                if (time > 0) {
+                    withTimeout(unit.toMillis(time)) {
+                        job.join()
+                    }
+                } else {
                     job.join()
                 }
-            } else {
-                job.join()
+            } finally {
+                terminate()
             }
-        } finally {
-            terminate()
         }
     }
 
@@ -143,9 +147,11 @@ open class CoroutineDequeuer<T> internal constructor(
         unprocessed = channel.toList()
     }
 
-    override suspend fun shutdownNow(cause: Throwable?) {
-        job.cancel(CancellationException("Canceled due to exception", cause))
-        awaitTermination()
+    override fun shutdownNow(cause: Throwable?) {
+        runBlocking {
+            job.cancel(CancellationException("Canceled due to exception", cause))
+            awaitTermination()
+        }
     }
 
     companion object {

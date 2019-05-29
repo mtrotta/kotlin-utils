@@ -34,12 +34,10 @@ internal class CoroutineDequeuerTest {
         val stringProcessor = StringProcessor("1")
         val num = 1 shl 12
         val dequeuer = CoroutineDequeuer(stringProcessor, num)
-        runBlocking {
-            for (i in 0 until num) {
-                dequeuer.enqueue(i.toString())
-            }
-            dequeuer.awaitTermination()
+        for (i in 0 until num) {
+            dequeuer.enqueue(i.toString())
         }
+        dequeuer.awaitTermination()
         assertEquals(num, stringProcessor.ctr.get())
         assertTrue(dequeuer.isTerminated)
     }
@@ -50,15 +48,13 @@ internal class CoroutineDequeuerTest {
         val dequeuer =
             CoroutineDequeuer(stringProcessor, capacity = Channel.UNLIMITED)
         val num = 1 shl 12
-        runBlocking {
-            for (i in 0 until num) {
-                dequeuer.enqueue(i.toString())
-            }
-            dequeuer.shutdown()
-            try {
-                dequeuer.awaitTermination(1, TimeUnit.MILLISECONDS)
-            } catch (ignore: TimeoutCancellationException) {
-            }
+        for (i in 0 until num) {
+            dequeuer.enqueue(i.toString())
+        }
+        dequeuer.shutdown()
+        try {
+            dequeuer.awaitTermination(1, TimeUnit.MILLISECONDS)
+        } catch (ignore: TimeoutCancellationException) {
         }
         assertTrue(num != stringProcessor.ctr.get())
         assertTrue(dequeuer.isTerminated)
@@ -73,20 +69,18 @@ internal class CoroutineDequeuerTest {
             workers = 100
         )
         val num = 1 shl 8
-        runBlocking {
-            for (i in 0 until num) {
-                dequeuer.enqueue(i.toString())
-            }
-            println("Queue full")
-            dequeuer.shutdown()
-            try {
-                dequeuer.enqueue("1")
-                fail()
-            } catch (e: RejectedException) {
-            }
-            assertFalse(dequeuer.isTerminated)
-            dequeuer.awaitTermination()
+        for (i in 0 until num) {
+            dequeuer.enqueue(i.toString())
         }
+        println("Queue full")
+        dequeuer.shutdown()
+        try {
+            dequeuer.enqueue("1")
+            fail()
+        } catch (e: RejectedException) {
+        }
+        assertFalse(dequeuer.isTerminated)
+        dequeuer.awaitTermination()
         assertTrue(dequeuer.isTerminated)
         assertEquals(num, stringProcessor.ctr.get())
     }
@@ -99,13 +93,11 @@ internal class CoroutineDequeuerTest {
         }
         val dequeuer = CoroutineDequeuer(processors)
         val num = 1 shl 10
-        runBlocking {
-            for (i in 0 until num) {
-                dequeuer.enqueue(i.toString())
-            }
-            println("Queue full")
-            dequeuer.awaitTermination()
+        for (i in 0 until num) {
+            dequeuer.enqueue(i.toString())
         }
+        println("Queue full")
+        dequeuer.awaitTermination()
         assertTrue(dequeuer.isTerminated)
     }
 
@@ -120,20 +112,18 @@ internal class CoroutineDequeuerTest {
         }
         val dequeuer = CoroutineDequeuer(processor)
         val num = 5
-        runBlocking {
-            try {
-                for (i in 0 until num) {
-                    dequeuer.enqueue(i.toString())
-                }
-                fail()
-            } catch (ignore: RejectedException) {
+        try {
+            for (i in 0 until num) {
+                dequeuer.enqueue(i.toString())
             }
-            try {
-                dequeuer.awaitTermination()
-                fail()
-            } catch (e: Exception) {
-                assertSame(SIMULATED_EXCEPTION, e)
-            }
+            fail()
+        } catch (ignore: RejectedException) {
+        }
+        try {
+            dequeuer.awaitTermination()
+            fail()
+        } catch (e: Exception) {
+            assertSame(SIMULATED_EXCEPTION, e)
         }
         assertEquals(1, ctr.get())
         assertTrue(dequeuer.isTerminated)
@@ -153,13 +143,11 @@ internal class CoroutineDequeuerTest {
         }
         val dequeuer = CoroutineDequeuer(processor)
         dequeuer.exceptionHandler.register { sentinel = true }
-        runBlocking {
-            dequeuer.enqueue("A")
-            try {
-                dequeuer.awaitTermination(1, TimeUnit.HOURS)
-            } catch (e: Exception) {
-                assertSame(SIMULATED_EXCEPTION, e)
-            }
+        dequeuer.enqueue("A")
+        try {
+            dequeuer.awaitTermination(1, TimeUnit.HOURS)
+        } catch (e: Exception) {
+            assertSame(SIMULATED_EXCEPTION, e)
         }
         assertEquals(1, ctr.get())
         assertEquals(0, dequeuer.unprocessed.size)
@@ -182,21 +170,17 @@ internal class CoroutineDequeuerTest {
         }
         val dequeuer = CoroutineDequeuer(processor, capacity = 20)
         dequeuer.exceptionHandler.register { sentinel = true }
-        runBlocking {
-            try {
-                dequeuer.enqueue("A")
-                dequeuer.enqueue("B")
-                dequeuer.enqueue("C")
-            } catch (ignore: RejectedException) {
-                fail()
-            }
-
-            try {
-                dequeuer.awaitTermination(1, TimeUnit.HOURS)
-            } catch (e: Exception) {
-                assertSame(SIMULATED_EXCEPTION, e)
-            }
-
+        try {
+            dequeuer.enqueue("A")
+            dequeuer.enqueue("B")
+            dequeuer.enqueue("C")
+        } catch (ignore: RejectedException) {
+            fail()
+        }
+        try {
+            dequeuer.awaitTermination(1, TimeUnit.HOURS)
+        } catch (e: Exception) {
+            assertSame(SIMULATED_EXCEPTION, e)
         }
         assertTrue(dequeuer.isTerminated)
         assertEquals(1, dequeuer.unprocessed.size)
@@ -213,17 +197,18 @@ internal class CoroutineDequeuerTest {
             }
         }
         val dequeuer = CoroutineDequeuer(processor, capacity = 10)
-        runBlocking {
-            try {
-                dequeuer.enqueue("A")
-                dequeuer.enqueue("B")
-                dequeuer.enqueue("C")
-            } catch (ignore: RejectedException) {
-            }
-
-            delay(1000)
-            dequeuer.shutdownNow()
+        try {
+            dequeuer.enqueue("A")
+            dequeuer.enqueue("B")
+            dequeuer.enqueue("C")
+        } catch (ignore: RejectedException) {
         }
+
+        runBlocking {
+            delay(1000)
+        }
+
+        dequeuer.shutdownNow()
         assertTrue(dequeuer.isTerminated)
         assertEquals(2, dequeuer.unprocessed.size)
         assertNull(dequeuer.exceptionHandler.exception)
@@ -249,12 +234,10 @@ internal class CoroutineDequeuerTest {
         val dequeuer =
             CoroutineDequeuer(processors, Channel.UNLIMITED)
         val num = (1 shl 20).toLong()
-        runBlocking {
-            for (i in 0 until num) {
-                dequeuer.enqueue(i.toString())
-            }
-            dequeuer.awaitTermination()
+        for (i in 0 until num) {
+            dequeuer.enqueue(i.toString())
         }
+        dequeuer.awaitTermination()
         assertTrue(dequeuer.isTerminated)
     }
 

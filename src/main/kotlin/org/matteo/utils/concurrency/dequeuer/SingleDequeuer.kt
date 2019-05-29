@@ -5,9 +5,9 @@ import java.util.concurrent.TimeUnit
 
 abstract class SingleDequeuer<T>(
     var exceptionHandler: ExceptionHandler,
-    var onCompleteAction: (suspend (T) -> Unit)?
+    var onCompleteAction: ((T) -> Unit)? = null
 ) : Dequeuer<T> {
 
-    abstract suspend fun doTerminate(time: Long, unit: TimeUnit)
+    abstract fun doTerminate(time: Long, unit: TimeUnit)
 
 }

@@ -1,15 +1,12 @@
-package org.matteo.utils.concurrency.dequeuer.coroutine
+package org.matteo.utils.concurrency.dequeuer.thread
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.runBlocking
 import org.matteo.utils.concurrency.dequeuer.Processor
+import org.matteo.utils.concurrency.dequeuer.coroutine.BalancedCoroutineDequeuer
 import org.matteo.utils.concurrency.exception.ExceptionHandler
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -17,77 +14,20 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * Created with IntelliJ IDEA.
  * User: Matteo Trotta
- * Date: 23/05/19
+ * Date: 13/07/12
  */
-class BalancedCoroutineDequeuer<T> : CoroutineDequeuer<T> {
+class BalancedThreadDequeuer<T> : ThreadDequeuer<T> {
 
-    private val workers: List<BalancedWorker<T>>
+    private val workers: MutableList<BalancedWorker<T>> = mutableListOf()
 
     private var minWorkers: Int = 0
     private var maxWorkers: Int = 0
     private var numWorkers: AtomicInteger = AtomicInteger()
-    private val scheduledExecutorService: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private val scheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor(NamedThreadFactory("DequeuerBalancer"))
     private val reference = TreeMap<Int, Long>()
 
-    var profile = Profile.MEDIUM
-
-    constructor(
-        processor: Processor<T>,
-        min: Int = DEFAULT_MIN,
-        max: Int = DEFAULT_MAX,
-        initial: Int = min,
-        capacity: Int = Channel.RENDEZVOUS,
-        exceptionHandler: ExceptionHandler = ExceptionHandler(),
-        dispatcher: CoroutineDispatcher = Dispatchers.Default,
-        profile: Profile = Profile.MEDIUM
-    ) : this(
-        0.rangeTo(max).map {
-            BalancedWorker(processor, it < initial, profile)
-        },
-        min,
-        max,
-        initial,
-        capacity,
-        exceptionHandler,
-        dispatcher,
-        profile
-    )
-
-    constructor(
-        processors: List<Processor<T>>,
-        min: Int = DEFAULT_MIN,
-        initial: Int = min,
-        capacity: Int = Channel.RENDEZVOUS,
-        exceptionHandler: ExceptionHandler = ExceptionHandler(),
-        dispatcher: CoroutineDispatcher = Dispatchers.Default,
-        profile: Profile = Profile.MEDIUM
-    ) : this(
-        processors.mapIndexed { index, processor ->
-            BalancedWorker(processor, index < initial, profile)
-        },
-        min,
-        processors.size,
-        initial,
-        capacity,
-        exceptionHandler,
-        dispatcher,
-        profile
-    )
-
-    private constructor(
-        workers: List<BalancedWorker<T>>,
-        min: Int,
-        max: Int,
-        initial: Int,
-        capacity: Int,
-        exceptionHandler: ExceptionHandler,
-        dispatcher: CoroutineDispatcher,
-        profile: Profile
-    ) : super(workers, max, capacity, exceptionHandler, dispatcher) {
-        this.workers = workers
-        this.profile = profile
-        startBalance(min, max, initial)
-    }
+    private val profile: Profile
 
     private val analyser = {
         try {
@@ -150,14 +90,51 @@ class BalancedCoroutineDequeuer<T> : CoroutineDequeuer<T> {
                     )
                 }
             }
-            scheduledExecutorService.schedule(
-                analyser, analysisPeriod,
-                UNIT
-            )
+            scheduledExecutorService.schedule(analyser, analysisPeriod, UNIT)
             return status
         }
 
-    override suspend fun terminate() {
+    @JvmOverloads
+    constructor(
+        processor: Processor<T>,
+        synchronous: Boolean = true,
+        min: Int = DEFAULT_MIN,
+        max: Int = DEFAULT_MAX,
+        initial: Int = min,
+        profile: Profile = Profile.MEDIUM,
+        exceptionHandler: ExceptionHandler = ExceptionHandler()
+    ) : super(synchronous, exceptionHandler) {
+        this.profile = profile
+        for (i in 0 until max) {
+            addWorker(processor)
+        }
+        startBalance(min, max, initial)
+    }
+
+    @JvmOverloads
+    constructor(
+        processors: Collection<Processor<T>>,
+        synchronous: Boolean,
+        min: Int,
+        initial: Int = min,
+        profile: Profile = Profile.MEDIUM,
+        exceptionHandler: ExceptionHandler = ExceptionHandler()
+    ) : super(synchronous, exceptionHandler) {
+        this.profile = profile
+        for (processor in processors) {
+            addWorker(processor)
+        }
+        startBalance(min, processors.size, initial)
+    }
+
+    private fun addWorker(processor: Processor<T>) {
+        val worker = BalancedWorker(processor, this, profile)
+        workers.add(worker)
+    }
+
+    override fun getWorkers() = workers
+
+    override fun terminate() {
         super.terminate()
         scheduledExecutorService.shutdownNow()
     }
@@ -175,56 +152,52 @@ class BalancedCoroutineDequeuer<T> : CoroutineDequeuer<T> {
         val high: Double,
         val low: Double,
         val worth: Double,
-        val delta: Int,
         val fluid: Boolean
     ) {
-        FAST(3, 0.9, 0.1, 0.05, 100, true),
-        MEDIUM(5, 0.5, 0.5, 0.1, 10, true),
-        SLOW(10, 0.1, 0.9, 0.2, 1, false)
+        FAST(3, 0.9, 0.1, 0.05, true),
+        MEDIUM(5, 0.5, 0.5, 0.1, true),
+        SLOW(10, 0.1, 0.9, 0.2, false)
     }
 
     private fun startBalance(min: Int, max: Int, initial: Int) {
         if (initial < min || initial > max) {
             throw IllegalArgumentException(
-                String.format("Invalid initial value %d, must be %d <= initial <= %d", initial, min, max)
+                String.format(
+                    "Invalid initial value %d, must be %d <= initial <= %d",
+                    initial,
+                    min,
+                    max
+                )
             )
         }
-        setMin(min)
-        setMax(max)
+        setMinThread(min)
+        setMaxThread(max)
         numWorkers = AtomicInteger(initial)
-        scheduledExecutorService.schedule(
-            analyser, profile.period * CLOCK,
-            UNIT
-        )
+        for (i in 0 until initial) {
+            startWorker(workers[i])
+        }
+        scheduledExecutorService.schedule(analyser, profile.period * CLOCK, UNIT)
     }
 
     @Synchronized
     private fun increaseWorkers() {
         try {
             val num = numWorkers.get()
-            val increasedNumber = Math.min(maxWorkers, num + profile.delta)
-            if (increasedNumber != num) {
-                for (i in num until increasedNumber) {
-                    val worker: BalancedWorker<T> = workers[i]
-                    worker.start()
-                }
-                numWorkers.set(increasedNumber)
+            if (num < maxWorkers) {
+                val worker = workers[numWorkers.getAndIncrement()]
+                startWorker(worker)
             }
         } catch (e: Exception) {
             exceptionHandler.handle(e)
         }
+
     }
 
     @Synchronized
     private fun decreaseWorkers() {
-        val num = numWorkers.get()
-        val decreasedNumber = Math.max(minWorkers, num - profile.delta)
-        if (num != decreasedNumber) {
-            for (i in decreasedNumber until num) {
-                val worker: BalancedWorker<T> = workers[i]
-                worker.stop()
-            }
-            numWorkers.set(decreasedNumber)
+        if (numWorkers.get() > minWorkers) {
+            val worker = workers[numWorkers.decrementAndGet()]
+            worker.shutdown()
         }
     }
 
@@ -243,7 +216,6 @@ class BalancedCoroutineDequeuer<T> : CoroutineDequeuer<T> {
         return null
     }
 
-
     private fun isWorth(val1: Double, val2: Double): Boolean {
         return (val1 - val2) / val2 > profile.worth
     }
@@ -256,14 +228,14 @@ class BalancedCoroutineDequeuer<T> : CoroutineDequeuer<T> {
         return total
     }
 
-    private fun setMin(min: Int) {
+    private fun setMinThread(min: Int) {
         if (min < DEFAULT_MIN) {
             throw IllegalArgumentException("Invalid minimum $min, must be at least $DEFAULT_MIN")
         }
         minWorkers = min
     }
 
-    private fun setMax(max: Int) {
+    private fun setMaxThread(max: Int) {
         if (max < minWorkers) {
             throw IllegalArgumentException("Invalid maximum $max, must be greater than minimum $minWorkers")
         }
@@ -271,45 +243,62 @@ class BalancedCoroutineDequeuer<T> : CoroutineDequeuer<T> {
     }
 
     companion object {
-        private val LOGGER = LoggerFactory.getLogger(BalancedCoroutineDequeuer::class.java)
-
+        private val LOGGER = LoggerFactory.getLogger(BalancedThreadDequeuer::class.java)
         private const val DEFAULT_MIN = 1
-        private val DEFAULT_MAX = Runtime.getRuntime().availableProcessors() * 100
-
-        private val UNIT = TimeUnit.NANOSECONDS
-        val CLOCK = UNIT.convert(1, TimeUnit.SECONDS)
+        private val DEFAULT_MAX = Runtime.getRuntime().availableProcessors()
     }
 }
 
 internal class BalancedWorker<T>(
     processor: Processor<T>,
-    working: Boolean,
-    private val profile: BalancedCoroutineDequeuer.Profile
-) :
-    Worker<T>(processor, working) {
+    dequeuer: ThreadDequeuer<T>,
+    private val profile: BalancedThreadDequeuer.Profile
+) : Worker<T>(processor, dequeuer) {
 
     private val ctr = AtomicLong()
 
-    internal val isObservable = AtomicBoolean(false)
+    var averageWorkTime = BalancedCoroutineDequeuer.CLOCK.toDouble()
 
-    internal var averageWorkTime = BalancedCoroutineDequeuer.CLOCK.toDouble()
+    internal val isObservable: AtomicBoolean = AtomicBoolean()
 
     internal val processed: Long
         get() {
+            val processed = ctr.get()
+            ctr.set(0)
             isObservable.set(false)
-            return ctr.getAndSet(0)
+            return processed
         }
 
-    override suspend fun process(item: T?) {
-        if (item != null) {
-            val begin = System.nanoTime()
-            super.process(item)
-            val end = System.nanoTime()
-            feed(1)
-            val time = end - begin
-            averageWorkTime = averageWorkTime * profile.low + time * profile.high
-        } else {
-            feed(0)
+    override fun run() {
+        try {
+            dequeuer.phaser.register()
+            synchronized(this) {
+                var working = true
+                while (working) {
+                    val t: T? = dequeuer.queue.poll(ThreadDequeuer.CLOCK, ThreadDequeuer.UNIT)
+                    when {
+                        t != null -> {
+                            val begin = System.nanoTime()
+                            runBlocking {
+                                processor.process(t)
+                            }
+                            val end = System.nanoTime()
+                            feed(1)
+                            val time = end - begin
+                            averageWorkTime = averageWorkTime * profile.low + time * profile.high
+                            dequeuer.onCompleteAction?.invoke(t)
+                        }
+                        shutdown -> working = false
+                        else -> feed(0)
+                    }
+                }
+            }
+        } catch (interrupted: InterruptedException) {
+            Thread.currentThread().interrupt()
+        } catch (unhandled: Exception) {
+            dequeuer.exceptionHandler.handle(unhandled)
+        } finally {
+            dequeuer.phaser.arrive()
         }
     }
 
@@ -319,3 +308,4 @@ internal class BalancedWorker<T>(
     }
 
 }
+

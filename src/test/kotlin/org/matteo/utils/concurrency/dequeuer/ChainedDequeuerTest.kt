@@ -2,11 +2,12 @@ package org.matteo.utils.concurrency.dequeuer
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.matteo.utils.concurrency.dequeuer.coroutine.CoroutineDequeuer
+import org.matteo.utils.concurrency.dequeuer.thread.ThreadDequeuer
 import org.matteo.utils.concurrency.exception.ExceptionHandler
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 @ExperimentalCoroutinesApi
@@ -22,16 +23,42 @@ internal class ChainedDequeuerTest {
         val processor = FakeProcessor(0)
         val exceptionHandler = ExceptionHandler()
         val dequeuer = ChainedDequeuer(listOf(CoroutineDequeuer(processor)), exceptionHandler)
-        runBlocking {
-            dequeuer.enqueue("1")
-            dequeuer.awaitTermination()
-        }
+        dequeuer.enqueue("1")
+        dequeuer.awaitTermination()
         assertTrue(dequeuer.isTerminated)
         assertEquals(1, processor.ctr.get())
     }
 
     @Test
-    fun testQueue() {
+    fun testCoroutine() {
+        val workers = 3
+
+        val processor1 = FakeProcessor(1)
+        val processor2 = FakeProcessor(2)
+
+        val exceptionHandler = ExceptionHandler()
+
+        val dequeuer1 = CoroutineDequeuer(processor1, workers)
+        val dequeuer2 = CoroutineDequeuer(processor2, workers)
+
+        val chainedDequeuer = ChainedDequeuer(listOf(dequeuer1, dequeuer2), exceptionHandler)
+
+        val num = 10
+
+        for (i in 0 until num) {
+            chainedDequeuer.enqueue(i.toString())
+        }
+        println("Queue full")
+        chainedDequeuer.awaitTermination()
+
+        assertTrue(chainedDequeuer.isTerminated)
+
+        assertEquals(num, processor1.ctr.get())
+        assertEquals(num, processor2.ctr.get())
+    }
+
+    @Test
+    fun testThread() {
         val threads = 3
 
         val processor1 = FakeProcessor(1)
@@ -39,20 +66,18 @@ internal class ChainedDequeuerTest {
 
         val exceptionHandler = ExceptionHandler()
 
-        val dequeuer1 = CoroutineDequeuer(processor1, threads)
-        val dequeuer2 = CoroutineDequeuer(processor2, threads)
+        val dequeuer1 = ThreadDequeuer(processor1, threads)
+        val dequeuer2 = ThreadDequeuer(processor2, threads)
 
         val chainedDequeuer = ChainedDequeuer(listOf(dequeuer1, dequeuer2), exceptionHandler)
 
         val num = 10
 
-        runBlocking {
-            for (i in 0 until num) {
-                chainedDequeuer.enqueue(i.toString())
-            }
-            println("Queue full")
-            chainedDequeuer.awaitTermination()
+        for (i in 0 until num) {
+            chainedDequeuer.enqueue(i.toString())
         }
+        println("Queue full")
+        chainedDequeuer.awaitTermination(1, TimeUnit.HOURS)
 
         assertTrue(chainedDequeuer.isTerminated)
 
@@ -85,19 +110,19 @@ internal class ChainedDequeuerTest {
         chainedDequeuer.exceptionHandler.register { sentinel = true }
 
         val num = 15
-        runBlocking {
-            try {
-                for (i in 0 until num) {
-                    chainedDequeuer.enqueue(i.toString())
-                }
-            } catch (ignore: RejectedException) {
+        try {
+            for (i in 0 until num) {
+                chainedDequeuer.enqueue(i.toString())
             }
+        } catch (ignore: RejectedException) {
+            ignore.printStackTrace()
+        }
 
-            try {
-                chainedDequeuer.awaitTermination()
-            } catch (e: Exception) {
-                assertSame(SIMULATED_EXCEPTION, e)
-            }
+        try {
+            chainedDequeuer.awaitTermination()
+            fail()
+        } catch (e: Exception) {
+            assertSame(SIMULATED_EXCEPTION, e)
         }
 
         assertTrue(processorSuccess.ctr.get() > 0)

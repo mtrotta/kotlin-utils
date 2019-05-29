@@ -14,13 +14,13 @@ interface Dequeuer<T> {
     val isTerminated: Boolean
 
     @Throws(RejectedException::class)
-    suspend fun enqueue(item: T)
+    fun enqueue(item: T)
 
     fun shutdown()
 
-    suspend fun shutdownNow(cause: Throwable? = null)
+    fun shutdownNow(cause: Throwable? = null)
 
-    suspend fun awaitTermination(time: Long = -1L, unit: TimeUnit = TimeUnit.SECONDS)
+    fun awaitTermination(time: Long = -1L, unit: TimeUnit = TimeUnit.SECONDS)
 
 }
 
