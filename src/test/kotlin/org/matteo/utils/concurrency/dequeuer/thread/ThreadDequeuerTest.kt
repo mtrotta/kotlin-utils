@@ -18,10 +18,10 @@ internal class ThreadDequeuerTest {
 
     private var sentinel: Boolean = false
 
-    class StringProcessor : Processor<String> {
+    class StringProcessor(private val time: Long = 0) : Processor<String> {
         val ctr = AtomicInteger()
         override suspend fun process(item: String) {
-            delay(0)
+            delay(time)
             ctr.incrementAndGet()
         }
     }
@@ -42,15 +42,15 @@ internal class ThreadDequeuerTest {
 
     @Test
     fun testQueueTimeout() {
-        val threads = 10
-        val processor = StringProcessor()
+        val threads = 1
+        val processor = StringProcessor(50)
         val dequeuer = ThreadDequeuer(processor, threads, false)
-        val num = 1 shl 12
+        val num = 1 shl 10
         for (i in 0 until num) {
             dequeuer.enqueue(i.toString())
         }
-        dequeuer.awaitTermination(1, TimeUnit.MILLISECONDS)
-        assertTrue(num != processor.ctr.get())
+        dequeuer.awaitTermination(1, TimeUnit.NANOSECONDS)
+        assertNotEquals(num, processor.ctr.get())
         assertTrue(dequeuer.isTerminated)
     }
 
@@ -96,7 +96,7 @@ internal class ThreadDequeuerTest {
             assertSame(SIMULATED_EXCEPTION, e)
         }
 
-        assertEquals(1, ctr.get())
+        assertNotEquals(num, ctr.get())
         assertTrue(dequeuer.isTerminated)
     }
 

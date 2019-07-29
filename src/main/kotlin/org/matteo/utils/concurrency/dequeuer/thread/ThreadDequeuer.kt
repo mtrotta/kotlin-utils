@@ -106,10 +106,10 @@ open class ThreadDequeuer<T> protected constructor(
     override fun doTerminate(time: Long, unit: TimeUnit) {
         try {
             shutdown()
-            Async.run({
+            async {
                 phaser.arriveAndAwaitAdvance()
                 service.shutdown()
-            })
+            }
             service.awaitTermination(time, unit)
         } finally {
             terminate()

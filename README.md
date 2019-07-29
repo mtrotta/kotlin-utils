@@ -11,6 +11,7 @@ For example X yearly elaborations, Y monthly, Z daily etc.
 
 * `Node` class to represent a tree with a Key and a Value
 * `PriorityHashSet` for choosing objects with same hash based on a priority
+* `Chunker` to process chunks of a collection with a common key
 
 ### Dequeuer
 `Dequeuer` is an utility for processing many items in parallel.

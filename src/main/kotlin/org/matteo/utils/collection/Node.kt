@@ -1,8 +1,6 @@
 package org.matteo.utils.collection
 
 import java.util.*
-import java.util.function.Consumer
-import java.util.function.Predicate
 
 /**
  * Created with IntelliJ IDEA.
@@ -240,16 +238,16 @@ open class Node<K : Comparable<K>, V> @JvmOverloads constructor(
     fun subTree(from: Int, size: Int): Node<K, V> =
         cloneNode().also { it.putNodes(childrenList.subList(from, from + size)) }
 
-    fun filteredTree(predicate: Predicate<Node<K, V>>): Node<K, V> = filter(this, this, cloneNode(), predicate)
+    fun filteredTree(predicate: (Node<K, V>) -> Boolean): Node<K, V> = filter(this, this, cloneNode(), predicate)
 
     private fun filter(
         ancestor: Node<K, V>,
         current: Node<K, V>,
         root: Node<K, V>,
-        predicate: Predicate<Node<K, V>>
+        predicate: (Node<K, V>) -> Boolean
     ): Node<K, V> {
         for (node in current.getChildren()) {
-            if (predicate.test(node)) {
+            if (predicate(node)) {
                 root.add(node.getBranch(ancestor))
             }
         }
@@ -259,13 +257,13 @@ open class Node<K : Comparable<K>, V> @JvmOverloads constructor(
         return root
     }
 
-    fun find(key: K?): Node<K, V> = find(key, this, cloneNode(), { true })
+    fun find(key: K?): Node<K, V> = find(key, this, cloneNode()) { true }
 
-    fun find(key: K?, predicate: Predicate<Node<K, V>>): Node<K, V> = find(key, this, cloneNode(), predicate)
+    fun find(key: K?, predicate: (Node<K, V>) -> Boolean): Node<K, V> = find(key, this, cloneNode(), predicate)
 
-    private fun find(key: K?, current: Node<K, V>, root: Node<K, V>, predicate: Predicate<Node<K, V>>): Node<K, V> {
+    private fun find(key: K?, current: Node<K, V>, root: Node<K, V>, predicate: (Node<K, V>) -> Boolean): Node<K, V> {
         val found = current.getChild(key)
-        if (found != null && predicate.test(found)) {
+        if (found != null && predicate(found)) {
             root.add(found.branch)
         }
         for (child in current.getChildren()) {
@@ -282,45 +280,45 @@ open class Node<K : Comparable<K>, V> @JvmOverloads constructor(
         return root
     }
 
-    fun traverseByDepthTopDown(consumer: Consumer<Node<K, V>>) {
-        consumer.accept(this)
+    fun traverseByDepthTopDown(consumer: (Node<K, V>) -> Unit) {
+        consumer(this)
         for (child in children.values) {
             child.traverseByDepthTopDown(consumer)
         }
     }
 
-    fun traverseByDepthBottomUp(consumer: Consumer<Node<K, V>>) {
+    fun traverseByDepthBottomUp(consumer: (Node<K, V>) -> Unit) {
         for (child in children.values) {
             child.traverseByDepthBottomUp(consumer)
         }
-        consumer.accept(this)
+        consumer(this)
     }
 
-    fun traverseByBreadthTopDown(consumer: Consumer<Node<K, V>>) {
-        consumer.accept(this)
+    fun traverseByBreadthTopDown(consumer: (Node<K, V>) -> Unit) {
+        consumer(this)
         topDown(children.values, consumer)
     }
 
-    private fun topDown(children: Collection<Node<K, V>>, consumer: Consumer<Node<K, V>>) {
+    private fun topDown(children: Collection<Node<K, V>>, consumer: (Node<K, V>) -> Unit) {
         for (child in children) {
-            consumer.accept(child)
+            consumer(child)
         }
         for (child in children) {
             topDown(child.getChildren(), consumer)
         }
     }
 
-    fun traverseByBreadthBottomUp(consumer: Consumer<Node<K, V>>) {
+    fun traverseByBreadthBottomUp(consumer: (Node<K, V>) -> Unit) {
         bottomUp(children.values, consumer)
-        consumer.accept(this)
+        consumer(this)
     }
 
-    private fun bottomUp(children: Collection<Node<K, V>>, consumer: Consumer<Node<K, V>>) {
+    private fun bottomUp(children: Collection<Node<K, V>>, consumer: (Node<K, V>) -> Unit) {
         for (child in children) {
             bottomUp(child.getChildren(), consumer)
         }
         for (child in children) {
-            consumer.accept(child)
+            consumer(child)
         }
     }
 
@@ -367,10 +365,10 @@ open class Node<K : Comparable<K>, V> @JvmOverloads constructor(
         return leafMap
     }
 
-    fun getAncestor(filter: Predicate<Node<K, V>>): Node<K, V>? {
+    fun getAncestor(filter: (Node<K, V>) -> Boolean): Node<K, V>? {
         var node: Node<K, V>? = this
         while (node != null) {
-            if (filter.test(node)) {
+            if (filter(node)) {
                 break
             }
             node = node.parent

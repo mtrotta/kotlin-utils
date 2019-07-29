@@ -15,7 +15,7 @@ internal class ChainedDequeuerTest {
 
     @Test
     fun testEmpty() {
-        assertThrows(IllegalArgumentException::class.java, { ChainedDequeuer(listOf(), ExceptionHandler()) })
+        assertThrows(IllegalArgumentException::class.java) { ChainedDequeuer<Any>(listOf(), ExceptionHandler()) }
     }
 
     @Test

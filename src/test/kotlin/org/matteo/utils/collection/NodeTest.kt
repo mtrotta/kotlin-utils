@@ -442,7 +442,7 @@ internal class NodeTest {
             .replaceSibling(Node("Nomatch"))
         data.root.replace(n1).replace(l1).replace(data.leaf.cloneNode()).replace(Node("matchB"))
 
-        found = data.root.filteredTree({ node -> node.key?.startsWith("match") ?: false })
+        found = data.root.filteredTree { node -> node.key?.startsWith("match") ?: false }
         assertEquals(2, found.leaves.size)
     }
 
@@ -491,7 +491,7 @@ internal class NodeTest {
 
         val result = ArrayList<String?>()
 
-        data.root.traverseByDepthTopDown({ node -> result.add(node.key) })
+        data.root.traverseByDepthTopDown { node -> result.add(node.key) }
         assertEquals(6, result.size)
         assertNull(result[0])
         assertEquals(data.child.key, result[1])
@@ -622,7 +622,7 @@ internal class NodeTest {
     internal class NodeComparator(data: String?) : Node<String, NodeType>(data, null, TestComparator()) {
         private class TestComparator : Comparator<String?> {
             override fun compare(s1: String?, s2: String?): Int {
-                return NullSafeComparator().compare(s2, s1)
+                return NullSafeComparator<String>().compare(s2, s1)
             }
         }
     }
