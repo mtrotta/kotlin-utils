@@ -54,7 +54,7 @@ object Cleaner {
         return deleted
     }
 
-    private class Hierarchy @Throws(CalendarException::class)
+    private class Hierarchy
     internal constructor(private val checker: DateChecker, today: Date, maxElaborations: Int) {
         private val min: Date = checker.getMinimum(today, maxElaborations)
 
@@ -76,7 +76,6 @@ object Cleaner {
             hierarchy.parent = this
         }
 
-        @Throws(CalendarException::class)
         fun add(date: Date) {
             var hierarchy: Hierarchy? = this
             while (hierarchy != null && !hierarchy.checker.isDate(date)) {
@@ -117,16 +116,13 @@ interface Eraser<T> {
 
     val deletables: Collection<Deletable<T>>
 
-    @Throws(Exception::class)
     fun erase(deletable: T)
 
 }
 
 interface DateChecker {
-    @Throws(CalendarException::class)
     fun isDate(date: Date): Boolean
 
-    @Throws(CalendarException::class)
     fun getMinimum(date: Date, maxElaborations: Int): Date
 }
 
@@ -137,7 +133,7 @@ data class CheckerConfiguration(val checker: DateChecker, private val priority: 
     Comparable<CheckerConfiguration> {
 
     override fun compareTo(other: CheckerConfiguration): Int {
-        return Integer.compare(priority, other.priority)
+        return priority.compareTo(other.priority)
     }
 
 }

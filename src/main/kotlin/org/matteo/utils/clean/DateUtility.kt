@@ -4,7 +4,7 @@ import java.util.*
 
 object DateUtility {
 
-    private val workingCalendar = TargetCalendar()
+    private val workingCalendar = TargetCalendar
 
     private fun getCalendar(date: Date): Calendar {
         val calendar = GregorianCalendar()
@@ -12,36 +12,30 @@ object DateUtility {
         return calendar
     }
 
-    @Throws(CalendarException::class)
     fun isLastWorkingDayOfYear(date: Date): Boolean {
         return date == getLastWorkingDayOfYear(date)
     }
 
-    @Throws(CalendarException::class)
     fun getLastWorkingDayOfYear(date: Date): Date {
         val calendar = getCalendar(date)
         return getLastWorkingDay(calendar, Calendar.DAY_OF_YEAR)
     }
 
-    @Throws(CalendarException::class)
     fun getLastWorkingDayOfYear(date: Date, shift: Int): Date {
         val calendar = getCalendar(date)
         calendar.add(Calendar.YEAR, -shift)
         return getLastWorkingDay(calendar, Calendar.DAY_OF_YEAR)
     }
 
-    @Throws(CalendarException::class)
     fun isLastWorkingDayOfQuarter(date: Date): Boolean {
         val quarters = getQuarters(date)
         return quarters.contains(date)
     }
 
-    @Throws(CalendarException::class)
     private fun getQuarters(date: Date): Set<Date> {
         return getMonthFractions(date, Calendar.MARCH, Calendar.JUNE, Calendar.SEPTEMBER, Calendar.DECEMBER)
     }
 
-    @Throws(CalendarException::class)
     fun getLastWorkingDayOfQuarter(date: Date, shift: Int): Date {
         val calendar = getCalendar(date)
         var ctr = 0
@@ -60,7 +54,6 @@ object DateUtility {
         return quarter
     }
 
-    @Throws(CalendarException::class)
     private fun getMonthFractions(date: Date, vararg months: Int): Set<Date> {
         val calendar = getCalendar(date)
         calendar.set(Calendar.DAY_OF_MONTH, 1)
@@ -72,30 +65,25 @@ object DateUtility {
         return quarters
     }
 
-    @Throws(CalendarException::class)
     private fun getLastWorkingDayOfMonth(calendar: Calendar): Date {
         return getLastWorkingDay(calendar, Calendar.DAY_OF_MONTH)
     }
 
-    @Throws(CalendarException::class)
     fun getLastWorkingDayOfMonth(date: Date, shift: Int): Date {
         val calendar = getCalendar(date)
         calendar.add(Calendar.MONTH, -shift)
         return getLastWorkingDay(calendar, Calendar.DAY_OF_MONTH)
     }
 
-    @Throws(CalendarException::class)
     fun isLastWorkingDayOfMonth(date: Date): Boolean {
         val calendar = getCalendar(date)
         return date == getLastWorkingDayOfMonth(calendar)
     }
 
-    @Throws(CalendarException::class)
     fun getLastWorkingDayOfWeek(calendar: Calendar): Date {
         return getLastWorkingDay(calendar, Calendar.DAY_OF_WEEK)
     }
 
-    @Throws(CalendarException::class)
     fun getLastWorkingDayOfWeek(date: Date, max: Int): Date {
         val shift = if (isLastWorkingDayOfWeek(date)) max - 1 else max
         val calendar = getCalendar(date)
@@ -103,13 +91,11 @@ object DateUtility {
         return getLastWorkingDay(calendar, Calendar.DAY_OF_WEEK)
     }
 
-    @Throws(CalendarException::class)
     fun isLastWorkingDayOfWeek(date: Date): Boolean {
         val calendar = getCalendar(date)
         return date == getLastWorkingDayOfWeek(calendar)
     }
 
-    @Throws(CalendarException::class)
     private fun getLastWorkingDay(calendar: Calendar, maximum: Int): Date {
         val last = getCalendar(calendar.time)
         last.set(maximum, calendar.getActualMaximum(maximum))
@@ -119,7 +105,6 @@ object DateUtility {
         return last.time
     }
 
-    @Throws(CalendarException::class)
     fun getLastWorkingDay(date: Date, shift: Int): Date {
         val calendar = getCalendar(date)
         var ctr = 0
@@ -132,7 +117,6 @@ object DateUtility {
         return calendar.time
     }
 
-    @Throws(CalendarException::class)
     fun addWorkingDay(date: Date, rollOffDays: Int): Date {
         val calendar = getCalendar(date)
         var ctr = 0
