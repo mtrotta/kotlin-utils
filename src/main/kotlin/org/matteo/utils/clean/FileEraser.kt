@@ -20,7 +20,7 @@ class FileEraser @JvmOverloads constructor(private val paths: Collection<String>
                 .filter { folder -> folder.isDirectory }
                 .flatMap { folder ->
                     LOGGER.info("Analysing folder {}", folder.path)
-                    folder.listFiles().toList()
+                    folder.listFiles()?.toList() ?: emptyList()
                 }.mapNotNull { file -> getDeletable(file) }
         }
 
@@ -30,7 +30,6 @@ class FileEraser @JvmOverloads constructor(private val paths: Collection<String>
         this.datePattern = Pattern.compile(DATE_PATTERN)
     }
 
-    @Throws(Exception::class)
     override fun erase(deletable: File) {
         LOGGER.info("Deleting {}", deletable.path)
         delete(deletable)
@@ -73,7 +72,7 @@ class FileEraser @JvmOverloads constructor(private val paths: Collection<String>
         private fun delete(path: File) {
             if (path.exists()) {
                 if (path.isDirectory) {
-                    path.listFiles().forEach { file ->
+                    path.listFiles()?.forEach { file ->
                         if (file.isDirectory) {
                             delete(file)
                         } else {

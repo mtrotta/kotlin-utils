@@ -9,7 +9,6 @@ import java.util.*
  */
 object Cleaner {
 
-    @Throws(Exception::class)
     fun <T> clean(
         eraser: Eraser<T>,
         today: Date,
@@ -54,8 +53,7 @@ object Cleaner {
         return deleted
     }
 
-    private class Hierarchy
-    internal constructor(private val checker: DateChecker, today: Date, maxElaborations: Int) {
+    private class Hierarchy internal constructor(private val checker: DateChecker, today: Date, maxElaborations: Int) {
         private val min: Date = checker.getMinimum(today, maxElaborations)
 
         private var parent: Hierarchy? = null
@@ -125,7 +123,6 @@ interface DateChecker {
 
     fun getMinimum(date: Date, maxElaborations: Int): Date
 }
-
 
 class CalendarException(message: String) : Exception(message)
 
